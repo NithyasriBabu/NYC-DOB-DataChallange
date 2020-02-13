@@ -3,7 +3,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import datetime
+#import datetime
 
 #%% Importing data with data types and default values
 
@@ -226,13 +226,13 @@ print("Ratio of the highest to the second-highest value of these New Building pe
 #%% 5) What proportion of job applications involve an increase from the number of existing dwelling units to the number of proposed dwelling units
 # residential Existing Occupancy and job type A1?
 
-q3_data = fil_data.loc[fil_data['Job Type'] == 'A1']
+q5_data = fil_data.loc[fil_data['Job Type'] == 'A1']
 
 residential_codes = ['RES', 'R-']
 res_search_string = '|'.join(residential_codes)
 
-q3_data['Existing Occupancy'].fillna('')
-Res_Exsiting_JobA1 = q3_data[q3_data['Existing Occupancy'].str.contains(search_string)]
+q5_data['Existing Occupancy'].fillna('')
+Res_Exsiting_JobA1 = q5_data[q5_data['Existing Occupancy'].str.contains(search_string)]
 
 remove_empty_filter = (Res_Exsiting_JobA1['Proposed Dwelling Units'] != '') & (Res_Exsiting_JobA1['Existing Dwelling Units'] != '')
 Res_Exsiting_JobA1 = Res_Exsiting_JobA1.loc[remove_empty_filter]
@@ -247,3 +247,40 @@ total_units_filter = Res_Exsiting_JobA1.shape[0]
 
 ratio = round(Num_units_Increased/total_units_filter,2)
 print("Proportion of job applications involving an increase in the number of existing dwelling units with number of proposed dwelling units for residential Existing Occupancy and job type A1 is {}".format(ratio))
+
+#%% 6) Linear Regression for Number of Days of Approval in Brooklyn
+
+q6_data = fil_data.loc[fil_data['Borough'].str.upper() == 'BROOKLYN']
+q6_data = q6_data[q6_data['Fully Permitted'] != '']
+
+q6_data['Fully Permitted'] = pd.to_datetime(q6_data['Fully Permitted'], format='%m/%d/%Y')
+
+q6_data['Approval Time (Days)'] = (q6_data['Fully Permitted'] - q6_data['Pre- Filing Date']).dt.days
+q6_data = q6_data[q6_data['Approval Time (Days)'] >= 0]
+
+
+q6_reg_data = q6_data[['Approval Time (Days)','Pre-Filing_Year']]
+
+#To check if the 2 values have a linear relationship
+plt.scatter(q6_reg_data['Approval Time (Days)'],q6_reg_data['Pre-Filing_Year'])
+
+from sklearn.model_selection import KFold
+from sklearn.linear_model import LinearRegression
+
+X = pd.DataFrame(q6_reg_data['Approval Time (Days)'])
+Y = pd.DataFrame(q6_reg_data['Pre-Filing_Year'])
+
+model = LinearRegression()
+scores = []
+
+kfold = KFold(n_splits=3, shuffle=True)
+
+for i, (train, test) in enumerate(kfold.split(X, Y)):
+    model.fit(X.iloc[train,:], Y.iloc[train,:])
+    score = model.score(X.iloc[test,:], Y.iloc[test,:])
+    scores.append(score)
+
+avg_r2 = round(sum(scores)/len(scores),4)
+
+print("Average R2 Score of the linear regression of #Approval Time vs Pre_Filing_Year is {}".format(avg_r2))
+     
